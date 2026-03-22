@@ -1,0 +1,61 @@
+{
+	"easycom": {
+	    "autoscan": true,
+	    "custom": {
+	      "^up-(.*)": "uview-plus/components/u-$1/u-$1.vue",
+	      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue",
+		  "^l-(.*)": "@/uni_modules/lime-echart/components/l-$1/l-$1.vue"
+	    }
+	  },
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{ "path": "pages/tabbar/home", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/tabbar/market", "style": {"navigationStyle": "custom" } },
+		{ "path": "pages/tabbar/news", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/tabbar/profile", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/login/login", "style": {  "navigationBarTitleText": "登录"  } },
+		{ "path": "pages/search/search", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/period/period", "style": { "navigationStyle": "custom" } },
+		{  "path": "pages/news/post-detail", "style": { "navigationStyle": "custom" } },
+		{  "path": "pages/news/create-post", "style": { "navigationStyle": "custom" } },
+		{  "path": "pages/ai/ai-chat", "style": { "navigationStyle": "custom" } }
+	],
+	"tabBar": {
+	    "color": "#909399",
+	    "selectedColor": "#111111",
+	    "borderStyle": "black",
+	    "backgroundColor": "#ffffff",
+		"fontSize": "12px",
+	    "list": [
+	      {
+	        "pagePath": "pages/tabbar/home",
+	        "text": "首页",
+			"iconPath": "/static/tabbar/home.png",
+			"selectedIconPath": "/static/tabbar/home-sel.png"
+	      },
+	      {
+	        "pagePath": "pages/tabbar/market",
+	        "text": "行情",
+			"iconPath": "/static/tabbar/market.png",
+			"selectedIconPath": "/static/tabbar/market-sel.png"
+	      },
+	      {
+	        "pagePath": "pages/tabbar/news",
+	        "text": "资讯",
+			"iconPath": "/static/tabbar/news.png",
+			"selectedIconPath": "/static/tabbar/news-sel.png"
+	      },
+	      {
+	        "pagePath": "pages/tabbar/profile",
+	        "text": "我的",
+			"iconPath": "/static/tabbar/profile.png",
+			"selectedIconPath": "/static/tabbar/profile-sel.png"
+	      }
+	    ]
+	  },
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	}
+}
