@@ -35,8 +35,15 @@ export default defineConfig({
     },
   },
   server: {
-    // 如果你之后要调接口，可以在这里配跨域代理
+    // 跨域代理配置
     port: 3000,
-    open: true
+    open: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        rewrite: (path) => path
+      }
+    }
   }
 })

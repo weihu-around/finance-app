@@ -262,13 +262,13 @@ onShow(() => {
     .scroll-content {
       display: inline-flex; /* 必须是 inline-flex 才能在横向流里排布 */
       align-items: center;
-      gap: 20rpx; /* 胶囊之间的间距 */
+      // gap: 20rpx; /* 胶囊之间的间距 */
     }
     
     .s-item { 
       display: inline-flex; align-items: center; justify-content: center;
-      padding: 0 30rpx; height: 60rpx; border: 1px solid #e5e5e5; border-radius: 8rpx; /* 👉 胶囊形设计，更适合横向滚动 */
-      font-size: 26rpx; color: #333; flex-shrink: 0; /* 防止被挤压缩小 */
+      padding: 0 30rpx; height: 60rpx; border: 1px solid #e5e5e5; border-radius: 8rpx; 
+      font-size: 26rpx; color: #333; margin: 0 10rpx;flex-shrink: 0; /* 防止被挤压缩小 */
       
       &.active { border-color: #e62c2c; color: #e62c2c; background: #fff5f5; }
       &.sort-item { background: #f9f9f9; color: #666; border-style: dashed; }

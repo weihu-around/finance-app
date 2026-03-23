@@ -88,8 +88,8 @@ const sendMessage = async () => {
   isWaiting.value = true
 
   try {
-    // const backendUrl = 'http://127.0.0.1:5000/api/ai/chat'
-	const backendUrl = "http://192.168.1.7:5000/api/ai/chat"
+    const backendUrl = 'http://127.0.0.1:5000/api/ai/chat'
+	// const backendUrl = "http://192.168.1.7:5000/api/ai/chat"
 
     if (!isStream.value) {
       const res = await uni.request({

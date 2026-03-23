@@ -1,11 +1,11 @@
 // src/utils/request.js
-// const BASE_URL = 'http://127.0.0.1:5000'
-const BASE_URL = "http://192.168.1.7:5000"
+const BASE_URL = 'http://127.0.0.1:5000'
+// const BASE_URL = "http://192.168.1.7:5000"
 
 export const request = (options) => {
   return new Promise((resolve, reject) => {
 	const token = uni.getStorageSync('token')
-	// 塞进请求头里 (Bearer后面必须有个空格)
+	// 塞进请求头里 (Bearer 后面必须有个空格)
 	const header = options.header || {}
 	if (token) {
 	  header['Authorization'] = 'Bearer ' + token
