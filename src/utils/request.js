@@ -1,6 +1,4 @@
-// src/utils/request.js
-const BASE_URL = 'http://127.0.0.1:5000'
-// const BASE_URL = "http://192.168.1.7:5000"
+import { config } from '@/config/index.js'
 
 export const request = (options) => {
   return new Promise((resolve, reject) => {
@@ -11,7 +9,7 @@ export const request = (options) => {
 	  header['Authorization'] = 'Bearer ' + token
 	}
     uni.request({
-      url: BASE_URL + options.url,
+      url: config.baseUrl + options.url,
       method: options.method || 'GET',
       data: options.data || {},
       header: header,

@@ -128,7 +128,7 @@ const goToPeriodSetting = () => {
 }
 
 const uToastRef = ref(null)
-const chartRef = ref(null)
+const chartRef = shallowRef(null)
 
 // 股票数据管理
 const stockData = [
@@ -146,11 +146,6 @@ const nextStock = () => { currentStockIndex.value = (currentStockIndex.value + 1
 const goToSearch = () => {
   uni.navigateTo({ url: '/pages/search/search' })
 }
-
-// Tabs 管理
-// const chartTabs = ref([{ name: '分时', key: 'min' }, { name: '日K', key: 'day' }, { name: '周K', key: 'week' }, { name: '月K', key: 'month' }, { name: '五日', key: 'fiveDay' }])
-// const currentTab = ref(3)
-// const onTabChange = (item) => { currentTab.value = item.index }
 
 // Echarts 管理
 const mockData = [
