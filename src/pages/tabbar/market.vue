@@ -20,18 +20,18 @@
 
     <view class="stock-header flex-row-between align-center">
       <view class="price-box">
-        <text class="current-price red">{{ currentStock.price.toFixed(2) }}</text>
+        <text class="current-price" :style="{ color: priceColor }">{{ currentStock.price.toFixed(2) }}</text>
         <view class="price-detail flex-row align-center">
-          <text class="diff red">+{{ currentStock.diff.toFixed(2) }}</text>
-          <text class="percent red">+{{ currentStock.percent.toFixed(2) }}%</text>
+          <text class="diff" :style="{ color: priceColor }">{{ currentStock.diff > 0 ? '+' : '' }}{{ currentStock.diff.toFixed(2) }}</text>
+          <text class="percent" :style="{ color: priceColor }">{{ currentStock.percent > 0 ? '+' : '' }}{{ currentStock.percent.toFixed(2) }}%</text>
         </view>
       </view>
       
       <view class="info-details flex-row">
         <view class="detail-col">
-          <view class="item flex-row align-center"><text class="lbl">高</text><text class="val red">{{ currentStock.high.toFixed(2) }}</text></view>
-          <view class="item flex-row align-center"><text class="lbl">低</text><text class="val green">{{ currentStock.low.toFixed(2) }}</text></view>
-          <view class="item flex-row align-center"><text class="lbl">开</text><text class="val red">{{ currentStock.open.toFixed(2) }}</text></view>
+          <view class="item flex-row align-center"><text class="lbl">高</text><text class="val" :style="{ color: upColor }">{{ currentStock.high.toFixed(2) }}</text></view>
+          <view class="item flex-row align-center"><text class="lbl">低</text><text class="val" :style="{ color: downColor }">{{ currentStock.low.toFixed(2) }}</text></view>
+          <view class="item flex-row align-center"><text class="lbl">开</text><text class="val" :style="{ color: upColor }">{{ currentStock.open.toFixed(2) }}</text></view>
         </view>
         <view class="detail-col" style="margin-left: 30rpx;">
           <view class="item flex-row align-center"><text class="lbl">量</text><text class="val-unit">{{ currentStock.volume }}亿</text></view>
@@ -83,6 +83,16 @@
 	</view>
 	
     <view class="chart-wrapper">
+      <view class="chart-tools flex-row-between align-center">
+        <text class="mode-text">{{ isChineseMarket ? '🇨🇳 沪深A股模式' : '🇺🇸 国际/加密模式' }}</text>
+        <view class="switch-btn flex-row align-center" @click="toggleMarketMode">
+          <u-icon name="reload" size="14" :color="isChineseMarket ? '#e62c2c' : '#00b578'"></u-icon>
+          <text class="btn-txt" :style="{ color: isChineseMarket ? '#e62c2c' : '#00b578' }">
+            {{ isChineseMarket ? '红涨绿跌' : '绿涨红跌' }}
+          </text>
+        </view>
+      </view>
+
       <l-echart ref="chartRef" @finished="onChartReady"></l-echart>
     </view>
 
@@ -101,36 +111,41 @@ import { useMarketStore } from '@/store/market'
 
 const marketStore = useMarketStore()
 
-// Tabs 管理 状态控制
-const currentTab = ref('month')
-const showMore = ref(false)
+// =================👉 1. 全局市场模式状态 (红绿切换引擎) =================
+const isChineseMarket = ref(true) // true: A股(红涨), false: 国际(绿涨)
 
-// 计算属性：切分外显和隐藏的周期
-const visiblePeriods = computed(() => marketStore.periodList.slice(0, 5))
-const hiddenPeriods = computed(() => marketStore.periodList.slice(5))
+// 计算属性：动态获取“涨”和“跌”的主题颜色 (用于头部价格文本)
+const upColor = computed(() => isChineseMarket.value ? '#e62c2c' : '#00b578')
+const downColor = computed(() => isChineseMarket.value ? '#00b578' : '#e62c2c')
 
-// 判断当前选中的周期是否在“更多”里面（用于高亮“更多”文字）
-const isHiddenPeriodActive = computed(() => {
-  return hiddenPeriods.value.some(item => item.key === currentTab.value)
+// 计算属性：当前股票的整体现价颜色（大于0用涨色，小于0用跌色）
+const priceColor = computed(() => {
+  if (currentStock.value.diff > 0) return upColor.value
+  if (currentStock.value.diff < 0) return downColor.value
+  return '#333' // 平盘为黑色
 })
 
-// 交互方法
+// 一键切换市场模式
+const toggleMarketMode = () => {
+  isChineseMarket.value = !isChineseMarket.value
+  renderChart() // 重新发射图表绘制指令！
+}
+
+// =================👉 2. 股票数据与 Tabs 管理 =================
+const currentTab = ref('month')
+const showMore = ref(false)
+const visiblePeriods = computed(() => marketStore.periodList.slice(0, 5))
+const hiddenPeriods = computed(() => marketStore.periodList.slice(5))
+const isHiddenPeriodActive = computed(() => hiddenPeriods.value.some(item => item.key === currentTab.value))
+
 const toggleMore = () => showMore.value = !showMore.value
 const selectPeriod = (key) => {
   currentTab.value = key
-  showMore.value = false // 选中后自动收起面板
-  // TODO: 这里后续可以触发 Echarts 数据重绘
+  showMore.value = false
 }
+const goToPeriodSetting = () => uni.navigateTo({ url: '/pages/period/period' })
+const goToSearch = () => uni.navigateTo({ url: '/pages/search/search' })
 
-// 跳转到排序设置页
-const goToPeriodSetting = () => {
-  uni.navigateTo({ url: '/pages/period/period' })
-}
-
-const uToastRef = ref(null)
-const chartRef = shallowRef(null)
-
-// 股票数据管理
 const stockData = [
   { name: '上证指数', code: '000001.SH', price: 4049.91, diff: 34.88, percent: 0.85, high: 4108.40, low: 4049.58, open: 4086.30, volume: 6.79, amount: 9512.3, turnover: 1.43 },
   { name: '深证成指', code: '399001.SZ', price: 11234.50, diff: -56.12, percent: -0.50, high: 11310.00, low: 11200.00, open: 11290.00, volume: 12.3, amount: 15400.1, turnover: 2.15 },
@@ -142,12 +157,11 @@ const currentStock = computed(() => stockData[currentStockIndex.value])
 const prevStock = () => { currentStockIndex.value = (currentStockIndex.value - 1 + stockData.length) % stockData.length }
 const nextStock = () => { currentStockIndex.value = (currentStockIndex.value + 1) % stockData.length }
 
-// 跳转搜索页
-const goToSearch = () => {
-  uni.navigateTo({ url: '/pages/search/search' })
-}
+// =================👉 3. Echarts 渲染引擎 =================
+const uToastRef = ref(null)
+const chartRef = shallowRef(null)
+let myChartInstance = null // 保存 init 后的实例对象
 
-// Echarts 管理
 const mockData = [
   [3400, 3450, 3380, 3480], [3450, 3500, 3420, 3520], [3500, 3420, 3400, 3550],
   [3420, 3300, 3280, 3450], [3300, 3250, 3200, 3350], [3250, 3380, 3220, 3400],
@@ -158,6 +172,7 @@ const mockData = [
   [3950, 4100, 3920, 4150], [4100, 4049.91, 4000, 4180]
 ]
 const categoryData = ['22-08', '22-09', '22-10', '22-11', '22-12', '23-01', '23-02', '23-03', '23-04', '23-05', '23-06', '23-07', '23-08', '23-09', '23-10', '23-11', '23-12', '24-01', '24-02', '24-03']
+
 function calculateMA(dayCount, data) {
   var result = [];
   for (var i = 0, len = data.length; i < len; i++) {
@@ -169,43 +184,58 @@ function calculateMA(dayCount, data) {
   return result;
 }
 
-const option = {
-  backgroundColor: '#ffffff',
-  tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-  grid: { left: '2%', right: '2%', bottom: '10%', top: '5%', containLabel: true },
-  xAxis: { type: 'category', data: categoryData, boundaryGap: false, axisLine: { onZero: false, lineStyle: { color: '#e5e5e5' } }, axisLabel: { color: '#999', fontSize: 10 } },
-  yAxis: { scale: true, splitArea: { show: false }, splitLine: { lineStyle: { type: 'dashed', color: '#f5f5f5' } }, axisLabel: { color: '#999', fontSize: 10 } },
-  dataZoom: [{ type: 'inside', start: 30, end: 100 }],
-  series: [
-    { name: 'K线图', type: 'candlestick', data: mockData, itemStyle: { color: '#ef232a', color0: '#14b143', borderColor: '#ef232a', borderColor0: '#14b143' } },
-    { name: 'MA5', type: 'line', data: calculateMA(5, mockData), smooth: true, showSymbol: false, lineStyle: { opacity: 0.8, width: 1.5, color: '#fdbf2d' } }
-  ]
+// 核心战术：动态图表绘制函数
+const renderChart = () => {
+  if (!myChartInstance) return
+
+  // 1. 获取当前模式对应的颜色
+  const cUp = upColor.value // 当前的“涨”色
+  const cDown = downColor.value // 当前的“跌”色
+
+  // 2. 组装图表配置
+  const option = {
+    backgroundColor: '#ffffff',
+    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+    grid: { left: '2%', right: '2%', bottom: '10%', top: '5%', containLabel: true },
+    xAxis: { type: 'category', data: categoryData, boundaryGap: false, axisLine: { onZero: false, lineStyle: { color: '#e5e5e5' } }, axisLabel: { color: '#999', fontSize: 10 } },
+    yAxis: { scale: true, splitArea: { show: false }, splitLine: { lineStyle: { type: 'dashed', color: '#f5f5f5' } }, axisLabel: { color: '#999', fontSize: 10 } },
+    dataZoom: [{ type: 'inside', start: 30, end: 100 }],
+    series: [
+      { 
+        name: 'K线图', 
+        type: 'candlestick', 
+        data: mockData, 
+        // 🚀 把画笔颜色换成我们的动态颜色！
+        itemStyle: { 
+          color: cUp, 
+          color0: cDown, 
+          borderColor: cUp, 
+          borderColor0: cDown 
+        } 
+      },
+      { name: 'MA5', type: 'line', data: calculateMA(5, mockData), smooth: true, showSymbol: false, lineStyle: { opacity: 0.8, width: 1.5, color: '#fdbf2d' } }
+    ]
+  }
+
+  // 3. 执行绘制
+  myChartInstance.setOption(option)
 }
 
+// Lime-echart 初始化回调
 const onChartReady = () => {
   if (!chartRef.value) return
-  chartRef.value.init(echarts, chart => { chart.setOption(option) })
+  chartRef.value.init(echarts, chart => { 
+    myChartInstance = chart // 保存实例
+    renderChart() // 渲染
+  })
 }
 
+// =================👉 4. 生命周期管理 =================
 onShow(() => {
-  // 1. 每次页面显示时，去全局缓存里找找，有没有别人传过来的股票代码
   const targetCode = uni.getStorageSync('targetStockCode')
-  
   if (targetCode) {
-    // 2. 拿到代码了！这里写你的业务逻辑
     console.log('接收到资讯页传来的股票代码：', targetCode)
-    
-    // 弹出提示（证明我们拿到了）
-    uni.showToast({ 
-      title: `已切换至股票: ${targetCode}`, 
-      icon: 'none',
-      duration: 2000
-    })
-    
-    // TODO: 拿到 code 后，在这里调用后端接口，重新请求该股票的价格和 K线数据...
-    // fetchStockDetail(targetCode)
-
-    // 3. 极其重要：用完立刻销毁！防止下次用户正常点击底部 Tab 进来时，再次触发这段逻辑
+    uni.showToast({ title: `已切换至股票: ${targetCode}`, icon: 'none', duration: 2000 })
     uni.removeStorageSync('targetStockCode')
   }
 })
@@ -222,7 +252,6 @@ onShow(() => {
   padding: 40rpx 30rpx; background-color: #fff; border-bottom-left-radius: 20rpx; border-bottom-right-radius: 20rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03);
   .price-box { width: 42%; .current-price { font-size: 56rpx; font-weight: bold; font-family: 'Courier New', Courier, monospace; display: block; } .price-detail { margin-top: 10rpx; font-size: 24rpx; .diff { margin-right: 16rpx; } } }
   .info-details { flex: 1; .detail-col { flex: 1; .item { margin-bottom: 12rpx; &:last-child { margin-bottom: 0; } .lbl { font-size: 24rpx; color: #a0a0a0; margin-right: 15rpx; } .val, .val-unit { font-size: 24rpx; color: #333; font-weight: bold; font-family: 'Courier New', Courier, monospace; } } } }
-  .red { color: #e62c2c !important; } .green { color: #00b578 !important; }
 }
 
 // tab搜索样式
@@ -246,7 +275,7 @@ onShow(() => {
   .more-panel {
     position: absolute; top: 88rpx; left: 0; width: 100%; background: #fff; border-top: 1px solid #f5f5f5; border-bottom-left-radius: 12rpx; border-bottom-right-radius: 12rpx; box-shadow: 0 10rpx 30rpx rgba(0,0,0,0.15); 
     box-sizing:border-box;
-	padding: 16rpx 10rpx; /* 上下留白，左右交给里面的 padding 控制 */
+	padding: 16rpx 10rpx;
     
     .panel-scroll {
       width: 100%;
@@ -255,21 +284,35 @@ onShow(() => {
     }
 
     .scroll-content {
-      display: inline-flex; /* 必须是 inline-flex 才能在横向流里排布 */
+      display: inline-flex; 
       align-items: center;
-      // gap: 20rpx; /* 胶囊之间的间距 */
     }
     
     .s-item { 
       display: inline-flex; align-items: center; justify-content: center;
       padding: 0 30rpx; height: 60rpx; border: 1px solid #e5e5e5; border-radius: 8rpx; 
-      font-size: 26rpx; color: #333; margin: 0 10rpx;flex-shrink: 0; /* 防止被挤压缩小 */
+      font-size: 26rpx; color: #333; margin: 0 10rpx;flex-shrink: 0; 
       
       &.active { border-color: #e62c2c; color: #e62c2c; background: #fff5f5; }
       &.sort-item { background: #f9f9f9; color: #666; border-style: dashed; }
     }
   }
 }
-.chart-wrapper { padding: 20rpx 0; height: 600rpx; background-color: #fff; margin: 20rpx 30rpx 0; border-radius: 12rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03); }
+
+.chart-wrapper { 
+  display: flex; flex-direction: column; padding: 0 0 20rpx 0; height: 660rpx; background-color: #fff; margin: 20rpx 30rpx 0; border-radius: 12rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03); 
+  /* 新增：图表控制台样式 */
+  .chart-tools {
+    padding: 20rpx 30rpx;
+    border-bottom: 1px dashed #f0f0f0;
+    margin-bottom: 10rpx;
+    .mode-text { font-size: 24rpx; color: #666; font-weight: bold; }
+    .switch-btn { 
+      background: #f9f9f9; padding: 6rpx 16rpx; border-radius: 30rpx; border: 1px solid #eee; transition: all 0.2s;
+      &:active { opacity: 0.7; }
+      .btn-txt { font-size: 22rpx; margin-left: 6rpx; font-weight: bold; }
+    }
+  }
+}
 .bottom-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 30rpx 30rpx; background: #fff; box-shadow: 0 -4rpx 10rpx rgba(0,0,0,0.05); padding-bottom: calc(30rpx + env(safe-area-inset-bottom)); z-index: 100; }
 </style>
