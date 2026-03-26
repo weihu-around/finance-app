@@ -7,11 +7,13 @@
       <u-subsection 
         :list="['常规模式 (等待)', '流式模式 (打字机)']" 
         :current="isStream ? 1 : 0" 
-        @change="val => isStream = (val === 1)"
+        @change="onModeChange"
         activeColor="#2979ff"
         customStyle="width: 400rpx;"
       ></u-subsection>
     </view>
+
+    <view :prop="streamPayload" :change:prop="aiRender.handleStream" style="display: none;"></view>
 
     <scroll-view scroll-y class="chat-window" :scroll-into-view="bottomId">
       <view class="msg-list">
@@ -49,7 +51,7 @@
         type="primary" 
         shape="circle" 
         text="发送" 
-        customStyle="margin-left: 20rpx; width: 120rpx;" 
+        customStyle="margin-left: 20rpx; width: 180rpx;" 
         @click="sendMessage"
         :loading="isWaiting"
       ></u-button>
@@ -57,164 +59,188 @@
   </view>
 </template>
 
-<script setup>
-import { ref, nextTick } from 'vue'
+<script>
+import { config } from '@/config/index.js'
 
-const isStream = ref(false) 
-const inputText = ref('')
-const msgList = ref([
-  { role: 'ai', content: '您好，我是智汇理财 AI 助手。股市有风险，有什么我可以帮您分析的吗？', isGenerating: false }
-])
-const isWaiting = ref(false)
-const bottomId = ref('')
-
-const scrollToBottom = async () => {
-  await nextTick()
-  bottomId.value = 'scroll-bottom-anchor'
-  setTimeout(() => { bottomId.value = '' }, 100) 
-}
-
-const sendMessage = async () => {
-  if (!inputText.value.trim() || isWaiting.value) return
-  
-  const userMsg = inputText.value
-  inputText.value = ''
-  
-  msgList.value.push({ role: 'user', content: userMsg })
-  scrollToBottom()
-  
-  const aiMsgIndex = msgList.value.length
-  msgList.value.push({ role: 'ai', content: '', isGenerating: true })
-  isWaiting.value = true
-
-  try {
-    // const backendUrl = 'http://127.0.0.1:5000/api/ai/chat'
-	const backendUrl = "http://192.168.1.7:5000/api/ai/chat"
-
-    if (!isStream.value) {
-      const res = await uni.request({
-        url: backendUrl,
-        method: 'POST',
-        data: { message: userMsg, is_stream: false }
-      })
-      if (res.data.code === 200) {
-        msgList.value[aiMsgIndex].content = res.data.data.content
-      } else {
-        msgList.value[aiMsgIndex].content = res.data.msg || '网络开小差了，请重试。'
-      }
-      msgList.value[aiMsgIndex].isGenerating = false
-      scrollToBottom()
-      isWaiting.value = false
-      return
+export default {
+  data() {
+    return {
+      isStream: false,
+      inputText: '',
+      msgList: [
+        { role: 'ai', content: '您好，我是智汇理财 AI 助手。股市有风险，有什么我可以帮您分析的吗？', isGenerating: false }
+      ],
+      isWaiting: false,
+      bottomId: '',
+      streamPayload: null
     }
+  },
+  methods: {
+    onModeChange(val) {
+      this.isStream = (val === 1);
+    },
+    scrollToBottom() {
+      this.$nextTick(() => {
+        this.bottomId = 'scroll-bottom-anchor'
+        setTimeout(() => { this.bottomId = '' }, 100)
+      })
+    },
+    // ⬇️ ====== 给 renderjs 调用的 3 个方法，这次它绝对能找到！ ====== ⬇️
+    receiveStreamData(text) {
+      const lastIndex = this.msgList.length - 1
+      if (lastIndex >= 0) {
+        this.msgList[lastIndex].content += text
+        this.scrollToBottom()
+      }
+    },
+    handleStreamEnd() {
+      const lastIndex = this.msgList.length - 1
+      if (lastIndex >= 0) {
+        this.msgList[lastIndex].isGenerating = false
+      }
+      this.isWaiting = false
+      this.scrollToBottom()
+    },
+    handleStreamError(errMsg) {
+      const lastIndex = this.msgList.length - 1
+      if (lastIndex >= 0) {
+        this.msgList[lastIndex].content += errMsg
+        this.msgList[lastIndex].isGenerating = false
+      }
+      this.isWaiting = false
+      this.scrollToBottom()
+    },
+    // ⬆️ ========================================================= ⬆️
 
-    const response = await fetch(backendUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userMsg, is_stream: true })
-    })
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder('utf-8')
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+    async sendMessage() {
+      if (!this.inputText.trim() || this.isWaiting) return
       
-      const chunkStr = decoder.decode(value, { stream: true })
-      const lines = chunkStr.split('\n\n')
+      const userMsg = this.inputText
+      this.inputText = ''
       
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const dataStr = line.slice(6)
-          if (dataStr === '[DONE]') break 
+      this.msgList.push({ role: 'user', content: userMsg })
+      this.scrollToBottom()
+      
+      const aiMsgIndex = this.msgList.length
+      this.msgList.push({ role: 'ai', content: '', isGenerating: true })
+      this.isWaiting = true
+
+	  const backendUrl = `${config.baseUrl}/api/ai/chat`
+
+      if (!this.isStream) {
+        try {
+          const res = await uni.request({
+            url: backendUrl,
+            method: 'POST',
+            data: { message: userMsg, is_stream: false }
+          })
+          if (res.data && res.data.code === 200) {
+            this.msgList[aiMsgIndex].content = res.data.data.content
+          } else {
+            this.msgList[aiMsgIndex].content = res.data?.msg || '网络开小差了，请重试。'
+          }
+        } catch (e) {
+          this.msgList[aiMsgIndex].content = '接口连接失败，请检查 Flask 后端。'
+        } finally {
+          this.msgList[aiMsgIndex].isGenerating = false
+          this.isWaiting = false
+          this.scrollToBottom()
+        }
+        return
+      }
+
+      // 触发 renderjs
+      this.streamPayload = {
+        url: backendUrl,
+        message: userMsg,
+        timestamp: Date.now()
+      }
+    }
+  }
+}
+</script>
+
+<script module="aiRender" lang="renderjs">
+export default {
+  methods: {
+    async handleStream(newValue, oldValue, ownerInstance, instance) {
+      if (!newValue || !newValue.url || !newValue.message) return;
+
+      try {
+        const response = await fetch(newValue.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: newValue.message, is_stream: true })
+        })
+
+        if (!response.ok) {
+           ownerInstance.callMethod('handleStreamError', '\n[系统提示: 后端接口异常]')
+           return
+        }
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder('utf-8')
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
           
-          try {
-            const dataObj = JSON.parse(dataStr)
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() 
+
+          for (let line of lines) {
+            line = line.trim()
+            if (!line) continue 
             
-            // 👉 逻辑修复：拦截后端传来的报错信息，直接显示在屏幕上！
-            if (dataObj.error) {
-              msgList.value[aiMsgIndex].content += `\n[系统提示: ${dataObj.error}]\n可能是API Key未配置或后端网络异常。`
-              scrollToBottom()
-              continue
+            if (line.startsWith('data:')) {
+              const dataStr = line.slice(5).trim()
+              if (dataStr === '[DONE]') continue 
+              
+              try {
+                const dataObj = JSON.parse(dataStr)
+                if (dataObj.error) {
+                  ownerInstance.callMethod('handleStreamError', `\n[系统提示: ${dataObj.error}]`)
+                } else if (dataObj.content) {
+                  ownerInstance.callMethod('receiveStreamData', dataObj.content)
+                }
+              } catch (e) {
+                // 静默处理破损碎片
+              }
             }
-            
-            if (dataObj.content) {
-              msgList.value[aiMsgIndex].content += dataObj.content
-              scrollToBottom() 
-            }
-          } catch (e) {
-            console.log('解析碎片失败', e)
           }
         }
+        
+        ownerInstance.callMethod('handleStreamEnd')
+
+      } catch (error) {
+	    ownerInstance.callMethod('handleStreamError', `\n[底层抛错侦察]: ${error.name} - ${error.message || error}`)
+        // ownerInstance.callMethod('handleStreamError', '\n接口连接失败，请检查网络。')
       }
     }
-
-  } catch (error) {
-    msgList.value[aiMsgIndex].content = '接口连接失败，请检查 Flask 后端是否启动。'
-  } finally {
-    msgList.value[aiMsgIndex].isGenerating = false
-    isWaiting.value = false
-    scrollToBottom()
   }
 }
 </script>
 
 <style lang="scss" scoped>
+/* 样式原封不动 */
 .ai-chat-container { height: 100vh; display: flex; flex-direction: column; background-color: #f6f7fb; }
 .mode-switch-wrap { padding: 20rpx; background-color: #fff; border-bottom: 1px solid #eee; .label { font-size: 26rpx; color: #666; margin-right: 10rpx; } }
 .chat-window { flex: 1; overflow: hidden; padding: 30rpx 20rpx; }
 .msg-list { display: flex; flex-direction: column; padding-bottom: 40rpx;}
 
-/* 👉 UI 修复：全新严谨的 Flex 气泡布局 */
-.msg-item { 
-  display: flex; 
-  align-items: flex-start;
-  width: 100%;
-  padding-bottom: 40rpx;
-}
-.msg-item:last-child {
-  margin-bottom: 0;
-}
+.msg-item { display: flex; align-items: flex-start; width: 100%; padding-bottom: 40rpx;}
+.msg-item:last-child { margin-bottom: 0;}
+.msg-item.is-user { flex-direction: row-reverse; }
+.msg-item.is-ai { flex-direction: row; }
+.avatar { flex-shrink: 0; margin: 0 20rpx; }
 
-.msg-item.is-user { 
-  flex-direction: row-reverse; /* 用户靠右 */
-}
-
-.msg-item.is-ai { 
-  flex-direction: row; /* AI 靠左 */
-}
-
-.avatar { 
-  flex-shrink: 0; /* 头像绝不被挤压 */
-  margin: 0 20rpx; 
-}
-
-.bubble { 
-  max-width: 65%; 
-  padding: 20rpx 30rpx; 
-  font-size: 30rpx; 
-  line-height: 1.6; 
-  word-break: break-all; /* 👉 极其重要：强制换行，防止英文或长标点冲破气泡 */
-  position: relative;
-}
-
-.is-user .bubble { 
-  background-color: #2979ff; 
-  color: #fff; 
-  border-radius: 20rpx 0 20rpx 20rpx; 
-}
-
-.is-ai .bubble { 
-  background-color: #fff; 
-  color: #333; 
-  border-radius: 0 20rpx 20rpx 20rpx; 
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05); 
-}
+.bubble { max-width: 65%; padding: 20rpx 30rpx; font-size: 30rpx; line-height: 1.6; word-break: break-all; position: relative;}
+.is-user .bubble { background-color: #2979ff; color: #fff; border-radius: 20rpx 0 20rpx 20rpx; }
+.is-ai .bubble { background-color: #fff; color: #333; border-radius: 0 20rpx 20rpx 20rpx; box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05); }
 
 .cursor-blink { display: inline-block; width: 4rpx; background: currentColor; margin-left: 4rpx; animation: blink 1s step-end infinite; }
-
 .input-bar { background-color: #fff; padding: 20rpx 30rpx calc(20rpx + env(safe-area-inset-bottom)); border-top: 1px solid #eee; }
-
 @keyframes blink { 50% { opacity: 0; } }
 </style>
