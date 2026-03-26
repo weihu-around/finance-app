@@ -25,7 +25,7 @@
 实时内容渲染 、 乐观更新 、 股票标签解析、跨页面状态同步通信 等核心技术
 
 <img width="418" height="741" alt="image" src="https://github.com/user-attachments/assets/2d5623f5-734d-45a2-8a79-8a2e591921c6" />
-<img width="416" height="743" alt="image" src="https://github.com/user-attachments/assets/259b061a-6cb3-4955-b809-1d464c069a3d" />
+<img width="373" height="805" alt="image" src="https://github.com/user-attachments/assets/d26d3a10-6e06-437c-9433-df9a2ec37362" />
 <img width="416" height="743" alt="image" src="https://github.com/user-attachments/assets/98345017-06fe-4ebd-807b-e51fdf936f4c" />
 <img width="416" height="743" alt="image" src="https://github.com/user-attachments/assets/cfe107b0-d2b1-4329-b53d-d918c1d29369" />
 <img width="416" height="743" alt="image" src="https://github.com/user-attachments/assets/e080629e-866b-45bf-a6a0-927f57708436" />
